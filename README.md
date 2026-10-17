@@ -1,5 +1,7 @@
 # bot-tells
 
+![bot-tells: check a message before you send it, and know if it sounds like a bot](https://raw.githubusercontent.com/askeleven/bot-tells/main/docs/social-preview.png)
+
 **Check a message before you send it for what makes readers think a bot wrote it.**
 
 ```bash
