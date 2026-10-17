@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bot-tells: does your message sound like a bot wrote it?</title>
+<meta name="description" content="Paste a message and see what makes readers think a bot wrote it: leaked placeholders, stock openers, words people now read as AI. Runs in your browser; nothing you paste leaves the page.">
+<meta property="og:title" content="bot-tells: does your message sound like a bot wrote it?">
+<meta property="og:description" content="Paste a message. See every bot tell marked, a 0-100 bot score, and what to write instead. Nothing you paste leaves your browser.">
+<meta property="og:type" content="website">
+<meta name="color-scheme" content="light dark">
+<style>
+:root {
+  --page: #e9edf1;
+  --sheet: #ffffff;
+  --ink: #1b2430;
+  --ink-soft: #4d5968;
+  --rule: #cfd6de;
+  --highlight: #ffe14d;
+  --mark-tell: color-mix(in srgb, var(--highlight) 70%, transparent);
+  --leak: #d93036;
+  --leak-wash: #fde8e8;
+  --pencil: #2557d6;
+  --keep: #1f7a4d;
+  --review: #a05a00;
+  --fail: #d93036;
+  --serif: Charter, "Bitstream Charter", "Iowan Old Style", "Sitka Text", Cambria, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #10151c;
+    --sheet: #18202a;
+    --ink: #e4e9ef;
+    --ink-soft: #9aa6b4;
+    --rule: #2c3643;
+    --highlight: #f2cf2a;
+    --mark-tell: color-mix(in srgb, var(--highlight) 32%, transparent);
+    --leak: #ff6b6f;
+    --leak-wash: #3a1d21;
+    --pencil: #7ea2ff;
+    --keep: #4fc58b;
+    --review: #f0a640;
+    --fail: #ff6b6f;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.5 var(--sans);
+}
+a { color: var(--pencil); }
+:focus-visible { outline: 2px solid var(--pencil); outline-offset: 2px; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+header.top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding: 20px 0 8px;
+}
+.name { font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
+.name a { color: inherit; text-decoration: none; }
+nav.links { display: flex; gap: 18px; font-size: 0.95rem; }
+
+.intro { padding: 28px 0 24px; max-width: 46rem; }
+.intro h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(2rem, 5.2vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  margin: 0 0 14px;
+}
+.intro p { margin: 0; color: var(--ink-soft); font-size: 1.05rem; max-width: 38rem; }
+
+.desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 860px) { .desk { grid-template-columns: minmax(0, 1fr); } }
+
+.sheet {
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: 0 1px 0 var(--rule), 0 14px 30px -22px rgba(27, 36, 48, 0.45);
+}
+.examples {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 12px 16px; border-bottom: 1px solid var(--rule);
+  font-size: 0.9rem; color: var(--ink-soft);
+}
+.examples button {
+  font: inherit; color: var(--ink); background: transparent;
+  border: 1px solid var(--rule); border-radius: 999px; padding: 3px 12px; cursor: pointer;
+}
+.examples button:hover { border-color: var(--ink-soft); }
+.examples button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+
+/* The editor: a transparent textarea over a copy of the text that carries the marks. */
+.editor { position: relative; }
+.editor .marks, .editor textarea {
+  margin: 0;
+  padding: 22px 24px 28px;
+  font: 1.08rem/1.65 var(--serif);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  tab-size: 4;
+  min-height: 420px;
+  width: 100%;
+  border: 0;
+  letter-spacing: normal;
+}
+.editor .marks {
+  color: transparent;
+  pointer-events: none;
+  position: absolute; inset: 0;
+  overflow: hidden;
+}
+.editor textarea {
+  position: relative;
+  display: block;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--ink);
+  caret-color: var(--ink);
+  outline: none;
+}
+.editor textarea::placeholder { color: var(--ink-soft); }
+.marks mark {
+  color: transparent;
+  border-radius: 2px;
+  padding: 0;
+  transition: box-shadow 160ms ease;
+}
+.marks mark.tell { background: var(--mark-tell); box-shadow: inset 0 -2px var(--highlight); }
+.marks mark.leak {
+  background: var(--leak-wash);
+  text-decoration: line-through 2px var(--leak);
+  text-decoration-skip-ink: none;
+  color: transparent;
+}
+.marks mark.lit { box-shadow: 0 0 0 2px var(--pencil); }
+
+.counter {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; border-top: 1px solid var(--rule);
+  font-size: 0.85rem; color: var(--ink-soft);
+}
+.counter label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+
+aside.verdict { position: sticky; top: 16px; padding: 20px; }
+.score-line { display: flex; align-items: baseline; gap: 8px; }
+.score {
+  font-family: var(--serif);
+  font-size: 5.2rem; line-height: 0.9;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.03em;
+}
+.score-of { color: var(--ink-soft); font-size: 1rem; }
+.meter { height: 6px; background: var(--rule); border-radius: 3px; margin: 14px 0 12px; overflow: hidden; }
+.meter span { display: block; height: 100%; width: 0; background: currentColor; transition: width 300ms ease; }
+.verdict[data-verdict="keep"] .score, .verdict[data-verdict="keep"] .meter { color: var(--keep); }
+.verdict[data-verdict="review"] .score, .verdict[data-verdict="review"] .meter { color: var(--review); }
+.verdict[data-verdict="fail"] .score, .verdict[data-verdict="fail"] .meter { color: var(--fail); }
+.summary { font-weight: 600; margin: 0 0 4px; }
+.tally { color: var(--ink-soft); margin: 0 0 18px; font-size: 0.95rem; }
+.actions { display: grid; gap: 8px; }
+.actions button {
+  font: inherit; font-weight: 600; cursor: pointer;
+  padding: 10px 14px; border-radius: 3px; text-align: left;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--sheet);
+}
+.actions button.quiet { background: transparent; color: var(--ink); border-color: var(--rule); font-weight: 500; }
+.actions button:disabled { opacity: 0.45; cursor: default; }
+.status { min-height: 1.4em; margin: 10px 0 0; font-size: 0.88rem; color: var(--ink-soft); }
+.legend { margin: 18px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule); font-size: 0.85rem; color: var(--ink-soft); display: grid; gap: 6px; }
+.legend i { display: inline-block; width: 1.6em; height: 0.95em; vertical-align: -0.1em; margin-right: 6px; border-radius: 2px; }
+.legend .t { background: var(--mark-tell); box-shadow: inset 0 -2px var(--highlight); }
+.legend .l { background: var(--leak-wash); border-bottom: 2px solid var(--leak); }
+
+section.notes { padding: 36px 0 8px; }
+section.notes h2, section.about h2 {
+  font-family: var(--serif); font-weight: 400; font-size: 1.6rem; margin: 0 0 6px;
+}
+.notes-empty { color: var(--ink-soft); margin: 0; }
+.note-group { margin: 22px 0 0; max-width: 46rem; }
+.note-group h3 { font-size: 1rem; margin: 0 0 2px; display: flex; gap: 10px; align-items: baseline; }
+.note-group h3 .kind { font-size: 0.8rem; font-weight: 600; color: var(--leak); }
+.note-group h3 .kind.tell { color: var(--review); }
+.note-group .why { margin: 0 0 8px; color: var(--ink-soft); font-size: 0.95rem; }
+.note-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.note-group li button {
+  all: unset; box-sizing: border-box; cursor: pointer; display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr); gap: 10px; width: 100%;
+  padding: 7px 10px; border-radius: 3px;
+}
+.note-group li button:hover, .note-group li button:focus-visible { background: var(--sheet); }
+.note-group li button:focus-visible { outline: 2px solid var(--pencil); }
+.where { color: var(--ink-soft); font-size: 0.85rem; font-variant-numeric: tabular-nums; padding-top: 2px; }
+.said { font-family: var(--serif); }
+.instead { display: block; color: var(--ink-soft); font-size: 0.92rem; }
+
+section.about {
+  margin: 40px 0 0; padding: 32px 0 48px; border-top: 1px solid var(--rule);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px;
+}
+section.about p { margin: 0 0 10px; color: var(--ink-soft); max-width: 34rem; }
+pre {
+  margin: 8px 0 0; padding: 12px 14px; overflow-x: auto;
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 3px;
+  font-size: 0.85rem; line-height: 1.5;
+}
+footer { padding: 0 0 40px; color: var(--ink-soft); font-size: 0.9rem; }
+
+@media (max-width: 560px) {
+  .editor .marks, .editor textarea { padding: 16px; min-height: 340px; font-size: 1rem; }
+  .score { font-size: 4.2rem; }
+  nav.links { gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meter span, .marks mark { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="name"><a href="./">bot-tells</a></div>
+    <nav class="links" aria-label="Project">
+      <a href="https://github.com/askeleven/bot-tells">GitHub</a>
+      <a href="https://www.npmjs.com/package/@askeleven/bot-tells">npm</a>
+    </nav>
+  </header>
+
+  <section class="intro">
+    <h1>Does your message sound like a bot wrote it?</h1>
+    <p>Paste an email, a text or a post. Everything a reader would hold against it gets marked, with what to write instead. It runs in your browser: nothing you paste leaves this page.</p>
+  </section>
+
+  <div class="desk">
+    <div class="sheet">
+      <div class="examples" role="group" aria-label="Examples">
+        <span>Try</span>
+        <button type="button" data-example="generated">A generated email</button>
+        <button type="button" data-example="polished">A polished one</button>
+        <button type="button" data-example="post">A LinkedIn post</button>
+        <button type="button" data-example="human">One a person wrote</button>
+      </div>
+      <div class="editor">
+        <div class="marks" id="marks" aria-hidden="true"></div>
+        <textarea id="text" spellcheck="false" aria-label="Your message" placeholder="Paste your message here."></textarea>
+      </div>
+      <div class="counter">
+        <span id="count">0 words</span>
+        <label><input type="checkbox" id="markdown"> Shown with Markdown rendered (Slack, GitHub)</label>
+      </div>
+    </div>
+
+    <aside class="verdict sheet" id="verdict" data-verdict="keep" aria-live="polite">
+      <div class="score-line"><span class="score" id="score">0</span><span class="score-of">/ 100 bot score</span></div>
+      <div class="meter" aria-hidden="true"><span id="meter"></span></div>
+      <p class="summary" id="summary">Paste a message to check it.</p>
+      <p class="tally" id="tally">&nbsp;</p>
+      <div class="actions">
+        <button type="button" id="fix" disabled>Apply safe fixes</button>
+        <button type="button" class="quiet" id="card" disabled>Download score card</button>
+        <button type="button" class="quiet" id="copy" disabled>Copy result</button>
+      </div>
+      <p class="status" id="status" role="status"></p>
+      <div class="legend">
+        <span><i class="t"></i>A tell: people will notice it</span>
+        <span><i class="l"></i>A leak: never send this</span>
+      </div>
+    </aside>
+  </div>
+
+  <section class="notes" aria-labelledby="notes-h">
+    <h2 id="notes-h">What a reader would notice</h2>
+    <div id="notes"><p class="notes-empty">Nothing yet.</p></div>
+  </section>
+
+  <section class="about">
+    <div>
+      <h2>Not an AI detector</h2>
+      <p>bot-tells cannot tell who wrote a message, and does not try. People write every one of these phrases too. It finds the things a reader would hold against the message, whoever wrote it.</p>
+      <p>A leak, such as a <code>[First Name]</code> nobody filled or a "Here's a draft:" left at the top, fails the message outright. Tells only add to the score.</p>
+    </div>
+    <div>
+      <h2>For agents and pipelines</h2>
+      <p>The same checks as a CLI, a library and an MCP server, so an agent can check its own writing before it sends anything.</p>
+      <pre>npx @askeleven/bot-tells draft.txt
+claude mcp add bot-tells -- npx -y @askeleven/bot-tells mcp</pre>
+    </div>
+  </section>
+
+  <footer>
+    Made by <a href="https://askeleven.com">AskEleven</a>. MIT licensed, on <a href="https://github.com/askeleven/bot-tells">GitHub</a>.
+  </footer>
+</div>
+
+<script type="module">
+import { checkMessage, fixMessage, CODES } from './src/index.js'
+
+const SITE = 'askeleven.github.io/bot-tells'
+
+const EM = '—'
+const EXAMPLES = {
+  generated: `Certainly! Here's a draft of the email:
+
+Subject: Unlocking Growth for Your Business
+
+Hi [First Name],
+
+I hope this email finds you well. In today's fast-paced business landscape, staying ahead is paramount. At Acme, we don't just build software ${EM} we build partnerships.
+
+Our platform seamlessly integrates with your existing tools, empowering your team to unlock their full potential.
+
+Don't hesitate to reach out if you have any questions.
+
+Best regards,
+[Your Name]
+
+Let me know if you'd like me to adjust the tone or make it more concise.`,
+  polished: `Hi Dana,
+
+I hope you're doing well! I wanted to follow up on our conversation last week regarding the website redesign. Our team has delved into your requirements and put together a comprehensive proposal that addresses your key goals ${EM} faster load times, a cleaner layout, and better mobile support.
+
+The result? A site that not only looks great but also converts. We believe this will play a pivotal role in your growth.
+
+Please let me know if you have any questions. I look forward to hearing from you!
+
+Best,
+Sam`,
+  post: `I got rejected from 47 jobs.
+
+Here's what I learned \u{1F447}
+
+\u{1F680} Persistence beats talent
+\u{1F4A1} Every no is data
+\u{1F525} Your network is your net worth
+
+The best part? I wouldn't change a thing.
+
+Let that sink in.`,
+  human: `Hi Dana,
+
+Quick one: the redesign quote is attached. It's $4,800, two weeks start to finish, and we can start on the 3rd if you sign by Friday.
+
+The big change is the booking page. Right now it takes six taps on a phone; we get it to two.
+
+Want me to hold the 3rd for you?
+
+Sam`,
+}
+
+const $ = (id) => document.getElementById(id)
+const text = $('text')
+const marks = $('marks')
+const markdown = $('markdown')
+let result = null
+
+const escape = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const plural = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`
+
+function run() {
+  const body = text.value
+  result = checkMessage(body, { markdown: markdown.checked })
+  renderMarks(body)
+  fitHeight()
+  renderVerdict(body)
+  renderNotes()
+}
+
+function renderMarks(body) {
+  let html = ''
+  let at = 0
+  result.findings.forEach((f, i) => {
+    if (f.start < at) return
+    html += escape(body.slice(at, f.start))
+    html += `<mark class="${f.level}" data-i="${i}">${escape(body.slice(f.start, f.end))}</mark>`
+    at = f.end
+  })
+  // A trailing newline needs something after it, or the copy is a line short.
+  html += `${escape(body.slice(at))}​`
+  marks.innerHTML = html
+}
+
+/** The textarea never scrolls itself, so its lines wrap exactly like the marks under it. */
+function fitHeight() {
+  text.style.height = 'auto'
+  text.style.height = `${text.scrollHeight}px`
+}
+
+function renderVerdict(body) {
+  const empty = !body.trim()
+  $('verdict').dataset.verdict = result.verdict
+  $('score').textContent = String(result.score)
+  $('meter').style.width = `${result.score}%`
+  $('summary').textContent = empty ? 'Paste a message to check it.' : result.summary
+  const leaks = result.findings.filter((f) => f.level === 'leak').length
+  const tells = result.findings.length - leaks
+  $('tally').textContent = empty
+    ? ' '
+    : result.findings.length === 0
+      ? `${plural(result.facts.words, 'word')}, nothing marked.`
+      : [leaks && plural(leaks, 'leak'), tells && plural(tells, 'tell')].filter(Boolean).join(', ')
+  $('count').textContent = plural(result.facts.words, 'word')
+  const fixable = result.findings.filter((f) => f.fix).length
+  $('fix').disabled = fixable === 0
+  $('fix').textContent = fixable ? `Apply safe fixes (${fixable})` : 'Apply safe fixes'
+  $('card').disabled = empty
+  $('copy').disabled = empty
+}
+
+function renderNotes() {
+  const box = $('notes')
+  if (result.findings.length === 0) {
+    box.innerHTML = `<p class="notes-empty">${text.value.trim() ? 'Nothing. It reads like a person wrote it.' : 'Nothing yet.'}</p>`
+    return
+  }
+  const order = result.reasons.map((r) => r.code)
+  box.innerHTML = order.map((code) => {
+    const info = CODES[code]
+    const items = result.findings
+      .map((f, i) => ({ f, i }))
+      .filter(({ f }) => f.code === code)
+      .map(({ f, i }) => `<li><button type="button" data-i="${i}"><span class="where">line ${f.line}</span><span><span class="said">“${escape(clip(f.text))}”</span><span class="instead">${escape(f.suggestion)}</span></span></button></li>`)
+      .join('')
+    const kind = info.level === 'leak' ? '<span class="kind">Leak</span>' : '<span class="kind tell">Tell</span>'
+    return `<div class="note-group"><h3>${escape(info.title)} ${kind}</h3><p class="why">${escape(info.why)}</p><ul>${items}</ul></div>`
+  }).join('')
+}
+
+function clip(s) {
+  const flat = s.replace(/\s+/g, ' ')
+  return flat.length > 90 ? `${flat.slice(0, 87)}...` : flat
+}
+
+function select(i) {
+  const f = result?.findings[i]
+  if (!f) return
+  text.focus({ preventScroll: true })
+  text.setSelectionRange(f.start, f.end)
+  const mark = marks.querySelector(`mark[data-i="${i}"]`)
+  for (const m of marks.querySelectorAll('mark.lit')) m.classList.remove('lit')
+  if (mark) {
+    mark.classList.add('lit')
+    mark.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
+}
+
+function status(message) {
+  $('status').textContent = message
+}
+
+function setExample(name) {
+  text.value = EXAMPLES[name]
+  for (const b of document.querySelectorAll('[data-example]')) b.setAttribute('aria-pressed', String(b.dataset.example === name))
+  status('')
+  run()
+}
+
+text.addEventListener('input', () => {
+  for (const b of document.querySelectorAll('[data-example]')) b.setAttribute('aria-pressed', 'false')
+  status('')
+  run()
+})
+// Wrapping changes with the width, and the height has to follow it.
+new ResizeObserver(fitHeight).observe(document.querySelector('.editor'))
+markdown.addEventListener('change', run)
+document.querySelector('.examples').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-example]')
+  if (b) setExample(b.dataset.example)
+})
+$('notes').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-i]')
+  if (b) select(Number(b.dataset.i))
+})
+
+$('fix').addEventListener('click', () => {
+  const before = result
+  const fixed = fixMessage(text.value, { markdown: markdown.checked })
+  if (!fixed.changed) {
+    status('Nothing here can be fixed without a rewrite.')
+    return
+  }
+  text.value = fixed.text
+  run()
+  const left = result.findings.length
+  status(`Fixed ${fixed.applied.length}. Score ${before.score} to ${result.score}.${left ? ` ${plural(left, 'finding')} left to rewrite yourself.` : ''}`)
+})
+
+$('copy').addEventListener('click', async () => {
+  const leaks = result.findings.filter((f) => f.level === 'leak').length
+  const tells = result.findings.length - leaks
+  const line = `My message scored ${result.score}/100 on bot-tells (${[leaks && plural(leaks, 'leak'), tells && plural(tells, 'tell')].filter(Boolean).join(', ') || 'nothing marked'}). Check yours: https://${SITE}`
+  try {
+    await navigator.clipboard.writeText(line)
+    status('Copied. Only the score and counts, not your message.')
+  } catch {
+    status(line)
+  }
+})
+
+$('card').addEventListener('click', () => {
+  const canvas = drawCard()
+  canvas.toBlob((blob) => {
+    if (!blob) return
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `bot-tells-${result.score}.png`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+    status('Saved. The card shows the score and the marked phrases, not the whole message.')
+  }, 'image/png')
+})
+
+/** A 1200 x 630 card: the score, the verdict, and the phrases that cost the most. */
+function drawCard() {
+  const W = 1200, H = 630
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = H
+  const g = c.getContext('2d')
+  const serif = getComputedStyle(document.documentElement).getPropertyValue('--serif')
+  const sans = getComputedStyle(document.documentElement).getPropertyValue('--sans')
+  const tint = { keep: '#1f7a4d', review: '#a05a00', fail: '#d93036' }[result.verdict]
+
+  g.fillStyle = '#e9edf1'
+  g.fillRect(0, 0, W, H)
+  g.fillStyle = '#ffffff'
+  g.fillRect(40, 40, W - 80, H - 80)
+  g.strokeStyle = '#cfd6de'
+  g.strokeRect(40.5, 40.5, W - 81, H - 81)
+
+  g.fillStyle = tint
+  g.font = `400 220px ${serif}`
+  g.textBaseline = 'alphabetic'
+  g.fillText(String(result.score), 90, 300)
+  const scoreWidth = g.measureText(String(result.score)).width
+  g.fillStyle = '#4d5968'
+  g.font = `400 34px ${sans}`
+  g.fillText('/ 100 bot score', 100 + scoreWidth, 300)
+
+  g.fillStyle = '#e1e6eb'
+  g.fillRect(90, 336, 460, 10)
+  g.fillStyle = tint
+  g.fillRect(90, 336, 460 * result.score / 100, 10)
+
+  g.fillStyle = '#1b2430'
+  g.font = `600 34px ${sans}`
+  wrapText(g, result.summary, 90, 410, 470, 42, 2)
+
+  const top = [...result.findings].sort((a, b) => b.points - a.points || (a.level === 'leak' ? -1 : 1)).slice(0, 5)
+  let y = 130
+  g.font = `400 30px ${serif}`
+  for (const f of top) {
+    const phrase = `“${clip(f.text).slice(0, 38)}${f.text.length > 38 ? '...' : ''}”`
+    const w = Math.min(g.measureText(phrase).width, 520)
+    g.fillStyle = f.level === 'leak' ? '#fde8e8' : 'rgba(255, 225, 77, 0.75)'
+    g.fillRect(620, y - 30, w + 16, 42)
+    if (f.level === 'leak') {
+      g.fillStyle = '#d93036'
+      g.fillRect(620, y - 10, w + 16, 3)
+    }
+    g.fillStyle = '#1b2430'
+    g.fillText(phrase, 628, y, 520)
+    y += 64
+  }
+  if (top.length === 0) {
+    g.fillStyle = '#4d5968'
+    g.fillText('Nothing marked.', 628, y)
+  }
+
+  g.fillStyle = '#4d5968'
+  g.font = `400 26px ${sans}`
+  g.fillText(`Check yours at ${SITE}`, 90, H - 80)
+  return c
+}
+
+function wrapText(g, s, x, y, width, lineHeight, maxLines) {
+  const words = s.split(' ')
+  let line = ''
+  let n = 0
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word
+    if (g.measureText(test).width > width && line) {
+      g.fillText(line, x, y + n * lineHeight)
+      line = word
+      if (++n >= maxLines) return
+    } else {
+      line = test
+    }
+  }
+  if (line) g.fillText(line, x, y + n * lineHeight)
+}
+
+setExample('generated')
+</script>
+</body>
+</html>
