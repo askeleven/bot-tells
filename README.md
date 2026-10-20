@@ -75,7 +75,7 @@ leak. Both thresholds are options.
 
 ## What it does not do
 
-**It does not rewrite.** `--fix` makes only the changes that need no judgement: it cuts a
+**It does not rewrite.** `--fix` makes only the changes that need no judgment: it cuts a
 filler sentence when the sentence is nothing but filler, cuts chat wrappers, swaps a few
 words one for one (utilize to use, a myriad of to many), turns a pair of em dashes around
 an aside into commas, and unwraps Markdown. "Please don't hesitate to contact me on
