@@ -1,0 +1,59 @@
+{
+  "name": "@askeleven/bot-tells",
+  "version": "0.1.0",
+  "description": "Check a message for what makes readers think a bot wrote it: leaked placeholders and chat wrappers, stock openers, words people now read as AI. A 0-100 bot score, the fixes that are safe to make, and a suggestion for the rest. CLI, library, MCP server, and a web page. Zero dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "author": "AskEleven",
+  "homepage": "https://github.com/askeleven/bot-tells",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/askeleven/bot-tells.git"
+  },
+  "bugs": {
+    "url": "https://github.com/askeleven/bot-tells/issues"
+  },
+  "keywords": [
+    "ai-writing",
+    "ai-tells",
+    "slop",
+    "writing-linter",
+    "email",
+    "cold-email",
+    "copywriting",
+    "mcp",
+    "mcp-server",
+    "ai-agents"
+  ],
+  "bin": {
+    "bot-tells": "bin/cli.js"
+  },
+  "main": "src/index.js",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "bin",
+    "src",
+    "types",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "build:types": "tsc -p tsconfig.json",
+    "build:site": "node scripts/build-site.js",
+    "prepublishOnly": "npm run build:types && npm test"
+  },
+  "types": "types/index.d.ts",
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "typescript": "^5.9.3"
+  }
+}
