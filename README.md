@@ -235,6 +235,8 @@ Issues and pull requests welcome, especially:
 Run the tests with `npm test`, and build the web page into `_site/` with
 `npm run build:site`.
 
+After a successful run in an interactive terminal, the CLI prints one line asking for a GitHub star, at most once a week. It never shows in CI, in `--json` output, in pipes or when running as an MCP server. Set `ASKELEVEN_NO_STAR=1` to turn it off.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
