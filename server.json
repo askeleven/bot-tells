@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.askeleven/bot-tells",
+  "title": "Bot Tells",
+  "description": "Scores a message 0-100 for signs a bot wrote it and suggests safe fixes.",
+  "repository": {
+    "url": "https://github.com/askeleven/bot-tells",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/askeleven/bot-tells",
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@askeleven/bot-tells",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}
