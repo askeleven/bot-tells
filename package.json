@@ -1,6 +1,7 @@
 {
   "name": "@askeleven/bot-tells",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "mcpName": "io.github.askeleven/bot-tells",
   "description": "Check a message for what makes readers think a bot wrote it: leaked placeholders and chat wrappers, stock openers, words people now read as AI. A 0-100 bot score, the fixes that are safe to make, and a suggestion for the rest. CLI, library, MCP server, and a web page. Zero dependencies.",
   "type": "module",
   "license": "MIT",
